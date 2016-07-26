@@ -1,0 +1,1304 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="css/reset.css" />
+    <link rel="stylesheet" href="css/font-awesome.min.css" />
+    <link rel="stylesheet" href="css/bootstrap.min.css" />
+	<link rel="stylesheet" href="css/main.css" />
+    <script src="js/jquery-2.2.3.min.js"></script>
+    <script src="js/vue.min.js"></script>
+    <script src="libs/ace/src-noconflict/ace.js"></script>
+    <script src="libs/ace/src-noconflict/ext-language_tools.js"></script>
+    <script src="libs/ace/src-noconflict/ext-modelist.js"></script>
+    <script src="libs/ace/src-noconflict/theme-tomorrow.js"></script>
+	<style>
+		::-webkit-scrollbar-track {
+		   background-color: transparent;
+		}
+		::-webkit-scrollbar {
+		  width: 8px;
+		  height: 8px;
+		  background-color: #F5F5F5;
+		}
+		::-webkit-scrollbar-thumb {
+		  background-color: #bbb;
+		}
+		.tag-box2 {
+			display: flex;
+			height: 24px;
+			line-height: 24px;
+		}
+		.tag-box2 a {
+			margin-right: 4px;
+		}
+		.tag-box2 .input-box{
+			flex: 1 0 0;
+			position: relative;		
+		}
+		.tag-box2 input{
+			border: none;
+			background-color: initial;
+			outline: none;
+			padding:0 6px;
+			width: 100%;
+			border-bottom:1px solid rgba(0,128,0, 0.5);	
+		}
+		.tag-box2 .input-suggest {
+			position: absolute;
+			left: 0;
+			right: 0;
+			z-index: 100;
+			color: rgb(0,128,0);
+			background-color: white;
+			-webkit-box-shadow: 1px 1px 4px rgba(0, 0, 0, 0.4);
+			max-height: 144px;
+			overflow-y: scroll;
+		}
+		.tag-box2 .input-sugges-highlighted {
+			background-color: rgba(0,128,0, 0.8);
+			color: white;
+		}
+		.tag-box2 .input-suggest li:hover {
+			background-color: rgb(0,128,0);
+			color: white;
+		}
+		.input-suggest li {
+			cursor: pointer;
+			padding:0 6px;
+		}
+		.spinner {
+			width: 100px;
+			height: 120px;
+			text-align: center;
+			font-size: 10px;
+			transform: translate(-50%,-50%);
+		}
+		.spinner > div {
+		    margin-left: 4px;
+			background-color: #1abc9c;
+			height: 100%;
+			width: 8px;
+			display: inline-block;	  
+			-webkit-animation: sk-stretchdelay 1.2s infinite ease-in-out;
+			animation: sk-stretchdelay 1.2s infinite ease-in-out;
+		}
+		.spinner .rect2 {
+		  -webkit-animation-delay: -1.1s;
+		  animation-delay: -1.1s;
+		}
+		.spinner .rect3 {
+		  -webkit-animation-delay: -1.0s;
+		  animation-delay: -1.0s;
+		}
+		.spinner .rect4 {
+		  -webkit-animation-delay: -0.9s;
+		  animation-delay: -0.9s;
+		}
+		.spinner .rect5 {
+		  -webkit-animation-delay: -0.8s;
+		  animation-delay: -0.8s;
+		}
+		@-webkit-keyframes sk-stretchdelay {
+		  0%, 40%, 100% { -webkit-transform: scaleY(0.4) }  
+		  20% { -webkit-transform: scaleY(1.0) }
+		}
+		@keyframes sk-stretchdelay {
+		  0%, 40%, 100% { 
+			transform: scaleY(0.4);
+			-webkit-transform: scaleY(0.4);
+		  }  20% { 
+			transform: scaleY(1.0);
+			-webkit-transform: scaleY(1.0);
+		  }
+		}
+		.ide-loading {
+			background-color: #F2F2F2;
+			position: absolute;
+			z-index: 100;
+			left: 0;
+			right: 0;
+			top: 0;
+			bottom: 0;
+		}
+		.ide-loading .spinner{
+			position: absolute;
+			top: 50%;
+			left: 50%;
+		}
+		#ideFolderTree,#ideTagTree {
+			position: absolute;
+			top: 0;
+			bottom: 0;
+			left: 0;
+			right: 0;
+		}
+		.tree-drag-in {
+			background-color: rgba(51, 153, 255, 0.4);
+		}
+		.ide-content-max #ideFiles, .ide-content-max .vertical-resize, .ide-content-max .ide-list{
+			display: none;
+		}
+		.tag-root {
+			margin: 0 5px;
+		}
+		.tag-item-name {
+			height: 40px;
+			line-height: 40px;
+			font-size: 14px;
+		}
+		.tag-item-name i{
+			display: inline-block;
+			margin: 0 5px;
+		}
+	</style>
+</head>
+<body>
+	<message v-ref:message></message>
+	<div class="ide-loading" v-show="pageloading" transition="fade">
+		<div class="spinner">
+		  <div class="rect1"></div>
+		  <div class="rect2"></div>
+		  <div class="rect3"></div>
+		  <div class="rect4"></div>
+		  <div class="rect5"></div>
+		</div>
+	</div>
+    <div class="ide-main select-none" id="ideMain" v-show="!pageloading" :class="{'ide-content-max': expandBox}">
+        <aside class="ide-files scrollbar" data-vertical="{minWidth: 250}" id="ideFiles">
+            <div class="row1 ide-files-top">
+                <div class="ide-files-logo">
+                    mynote
+                    <div class="menu-options">
+                        <span class="menu-action">
+							<i></i>
+						</span>
+                    </div>
+                </div>
+                <div class="ide-files-workspace">
+                    <button type="button" class="btn btn-default">
+						<span class="pull-left" id="locationName" title="D:\wgu\">wgu</span>
+						<span class="fa fa-caret-down pull-right" style="padding-top: 5px;"></span>
+					</button>
+                </div>
+            </div>
+            <div class="row2" style="position: relative;">
+				<folder-tree v-ref:folder-tree  :tree-data='treeData'  :tree-map='treeMap' v-show="leftShowBox == 'folder'" ></folder-tree>
+				<tag-tree v-ref:tag-tree :tag-group='tagGroup' v-show="leftShowBox=='tags'"></tag-tree>
+            </div>
+            <div class="row3 noWrap text-center">
+                <div class="btn-group">
+                    <label class="btn btn-default" :class="{'active': leftShowBox == 'tags'}" @click="leftShowBox='tags'">
+						<i class="fa fa-tags"></i>
+					</label>
+                    <label class="btn btn-default" :class="{'active': leftShowBox == 'folder'}" @click="leftShowBox='folder'">
+						<i class="fa fa-folder"></i>
+					</label>
+                    <label class="btn btn-default" :class="{'active': leftShowBox == 'info'}" @click="leftShowBox='info'">
+						<i class="fa fa-info-circle"></i>
+					</label>
+                </div>
+                <button class="btn btn-link" style="margin-left: 20px;" data-i18n="[title]ns.common:openSettingTooltip;" id="openOptions" title="打开设置">
+				<i class="fa fa-gears fa-lg"></i>
+			  </button>
+            </div>
+        </aside>
+        <div class="vertical-resize"></div>
+        <aside class="ide-list scrollbar" data-vertical="{minWidth: 300}" id="ideList">
+			<ul class="ide-list-ul" id="ideFileList" >
+				<li class="file-item" 
+					v-for="item in treeMap[selItemId].children" 
+					track-by="id" 
+					:class="{'sel': selFileId == item.id}" 
+					@click="selFileId = item.id"
+					v-if="item.type != 'folder'"
+				>
+					<div class="file-item-top"><i class="iconfont" >{{fileMap[item.id].t =='code'?'&#xe604;': '&#xe606;'}}</i>{{fileMap[item.id].name}}</div>
+					<div class="file-item-tags">
+						<a class="btn btn-sm tagButton" v-for="tag in fileMap[item.id].tags"> {{tag}} </a>
+					</div>
+					<div class="file-item-desc">{{fileMap[item.id].desc}}</div>
+				</li>
+			</ul>
+		</aside>
+        <div class="vertical-resize"></div>
+        <article class="ide-content" id="ideContent">
+            <code-box v-ref:code-box v-show="showBox=='code'"></code-box>
+			<favorite-box v-ref:favorite-box v-show="showBox=='favorite'" ></favorite-box>
+        </article>
+    </div>
+</body>
+<script type="text/x-template" id="favoriteBox-template">
+<div id="favoriteBox" class="code-box" >
+	<div class="title-box input-group-sm">
+		<input class="form-control codebox-title " placeholder="请输入标题" v-model="title">
+		<div class="btn-group" >
+			<label class="btn btn-default codebox-save" @click="$root.expandBox = !$root.expandBox">
+				<i class="fa fa-expand" :class="{'fa-expand': !$root.expandBox, 'fa-compress': $root.expandBox}"></i>
+			</label>
+		</div>
+		<div class="btn-group" >
+			<label class="btn btn-default codebox-save" @click="save">
+				<i class="iconfont" >&#xe603;</i>
+			</label>
+		</div>
+		<div class="btn-group" style="margin-right: 5px;">
+			<label class="btn btn-default codebox-save" @click="del">
+				<i class="iconfont" >&#xe605;</i>
+			</label>
+		</div>
+	</div>
+	<div class="title-box input-group-sm">
+		<input class="form-control codebox-title " placeholder="地址" v-model="url" @keyup.enter="go2url">
+		<div class="btn-group" >
+			<label class="btn btn-default codebox-save" style="padding: 1px 11px 1px 9px;" @click="back2url">
+				<i class="fa fa-play" style="transform: rotate(180deg);"></i>
+			</label>
+		</div>
+		<div class="btn-group" >
+			<label class="btn btn-default codebox-save" style="padding: 1px 9px 1px 11px;" @click="go2url">
+				<i class="fa fa-play"></i>
+			</label>
+		</div>
+	</div>
+	<tag-select :tag-list="tagList" :tag-sels="tagSels"></tag-select>
+	<div class="codemirror-box input-group-sm">
+		<webview id="webview" src="data:text/plain,"  plugins></webview>
+	</div>
+</div>
+</script>
+<script type="text/x-template" id="codeBox-template">
+<div id="codeBox" class="code-box" >
+	<div class="title-box input-group-sm">
+		<input class="form-control codebox-title " placeholder="请输入标题" v-model="codeTiTle">
+		<select class="form-control codebox-mode" v-model="codeMode">
+			<option v-for="m in modeList" value="{{m}}">{{m}}</option>
+		</select>
+		<div class="btn-group" >
+			<label class="btn btn-default codebox-save" @click="$root.expandBox = !$root.expandBox">
+				<i class="fa fa-expand" :class="{'fa-expand': !$root.expandBox, 'fa-compress': $root.expandBox}"></i>
+			</label>
+		</div>
+		<div class="btn-group" >
+			<label class="btn btn-default codebox-save" @click="save">
+				<i class="iconfont" >&#xe603;</i>
+			</label>
+		</div>
+		<div class="btn-group" style="margin-right: 5px;">
+			<label class="btn btn-default codebox-save" @click="del">
+				<i class="iconfont" >&#xe605;</i>
+			</label>
+		</div>
+	</div>
+	<tag-select :tag-list="tagList" :tag-sels="tagSels"></tag-select>
+	<div class="codemirror-box input-group-sm">
+		<pre id="aceEditor"></pre>
+	</div>
+</div>
+</script>
+<script type="text/x-template" id="folder-tree-template">
+    <div class="tree-box" id="ideFolderTree">
+		<ul class="tree-root" @keyup.enter="editItem(editItemId)">
+			<item class="item" :model="treeData" :deep="deep"></item>
+		</ul>
+	</div>
+</script>
+<script type="text/x-template" id="tag-tree-template">
+    <div class="tree-box" id="ideTagTree">
+		<ul class="tag-root">
+			<li class="tag-item" v-for="model in tagGroup">
+				<div class="tag-item-name"><i class="fa fa-tags"></i>{{model.key}}</div>
+				<div class="tag-item-group">
+					<a class="btn btn-sm tagButton" v-for="item in model.items"> {{item}}&nbsp;&nbsp;<span class="fa fa-times"></span></a>
+				</div>
+			</li>
+			<li class="tag-item">
+				<div class="tag-item-name"><i class="fa fa-tags"></i><input  value="111111111"></div>
+			</li>
+		</ul>
+	</div>
+</script>
+<script type="text/x-template" id="tree-node-template">
+    <li class="tree-item" 
+		v-if="model.type=='folder'" 
+		:class="{'tree-node': isFolder , 'tree-leaf': !isFolder}" 
+		data-id="{{*model.id}}" 
+		draggable="{{deep!=1}}" 
+	>
+        <div class="tree-content" data-id="{{*model.id}}" 
+			:style="{'padding-left': ((deep-1) * 15) + 'px' }" 
+			:class="{'tree-expand': isFolder && open, 'sel': $root.selItemId == model.id, 'selMenu': ($root.$refs.folderTree.contextMenuId == model.id ), 'editModel': $root.editItemId == model.id}"
+            @dragenter.stop="dragenter" >
+			<i v-if="isFolder" class="tree-expand-icon iconfont" @click="toggle">&#xe602;</i>
+			<i class="tree-floder-icon iconfont">&#xe600;</i>
+			<span v-if="$root.$refs.folderTree.editItemId != model.id">{{model.name}}</span>
+			<input v-if="$root.$refs.folderTree.editItemId == model.id" v-model="$root.$refs.folderTree.editName">
+        </div>
+        </div>
+        <ul v-show="open" v-if="isFolder">
+            <item class="item" v-for="model in model.children"  :model="model" :deep="deep+1"> </item>
+        </ul>
+    </li>
+</script>
+<script type="text/x-template" id="tag-select-template">
+<div class="tag-box2">
+	<a class="btn btn-sm tagButton" v-for="model in tagSels"> {{model}}&nbsp;&nbsp;<span class="fa fa-times" @click="tagSels.$remove(model)"></span></a>
+	<div class="input-box">
+		<input placeholder="请输入标签" @keydown="filterKeyDown" @focus="isShowSuggest=true" v-model="ipt">
+		<ul class="input-suggest scrollbar" v-show="isShowSuggest&&suggestList.length>0" > 
+			<li v-for="model in suggestList" 
+				:class="{'input-sugges-highlighted': $index == highlightIndex}" 
+				@click="selectItem($index)"
+			>{{model}}</li>
+		</ul>
+	</div>
+</div>
+</script>
+<script type="text/x-template" id="message-template">
+<div class="global-message-list transition hide" v-show="mess" style="top: 0px;">
+        <ul class="message-list">
+            <li class="message-list-entry message-list-entry-with-action">
+                <div class="actions-container">
+                    <div class="message-action"  v-for="m in btns" >
+                        <a class="action-button" @click="action(m.action)">{{m.name}}</a>
+                    </div>
+                </div>
+                <div class="message-left-side message-overflow-ellipsis">
+                    <span class="message-left-side severity" :class="'app-' + type">{{type}}</span>
+                    <span class="message-left-side">{{mess}}</span>
+                </div>
+            </li>
+        </ul>
+    </div>
+</script>
+<script>
+	const $doc = $(document);
+    const $win = $(window);
+	var MAIN_PAGE;
+	
+	const remote = require('electron').remote;
+    const Menu = remote.Menu;
+    const fs = require('fs');
+	const bookSpacePath = __dirname + '/../bookSpace/';
+    const dbFilePath = bookSpacePath + '/bookdb.json';
+	const localFilePath = bookSpacePath + '/files';
+	const localhtmlPath = bookSpacePath + '/html';
+	
+	function mkdirsSync(dirpath) { 
+		if (!fs.existsSync(bookSpacePath + dirpath)) {
+			var pathtmp = bookSpacePath;
+			dirpath.split('/').forEach(function(dirname) {
+				pathtmp += "/" + dirname;
+				if (!fs.existsSync(pathtmp)) {
+					fs.mkdirSync(pathtmp)
+				}	
+			});
+		}
+	}
+	if (!fs.existsSync(localFilePath)) {
+		fs.mkdirSync(localFilePath);
+		fs.mkdirSync(localhtmlPath)
+	}
+    const _ = require('underscore');
+    const _db = require('underscore-db');
+    const dialog = require('electron').remote.dialog;
+    _.mixin(_db);
+	
+    var filesData = (function() {
+        var isExists = fs.existsSync(dbFilePath);
+        var db;
+        if (!isExists) {
+            db = {
+                books: [],
+				file: {},
+                tags: [],
+				tagG: [{
+					key: 'def',
+					items: [],
+					color: 'red'
+				}]
+            };
+            _.insert(db.books, {
+                name: '我的笔记',
+                type: 'folder',
+                parent: 'root'
+            });
+            _.save(db, dbFilePath);
+        } else {
+            db = _.load(dbFilePath);
+            db.tags = db.tags || [];
+			db.tagG = db.tagG || [{
+					key: 'def',
+					items: [],
+					color: 'red'
+				}];
+        }
+        return db;
+    })();
+	
+	Vue.transition('fade', {
+		css: false,
+		enter: function (el, done) {
+			$(el).css('opacity', 0)
+				.animate({ opacity: 1 }, 1000, done)
+		},
+		enterCancelled: function (el) {
+			$(el).stop()
+		},
+		leave: function (el, done) {
+			$(el).animate({ opacity: 0 }, 1000, done)
+		},
+		leaveCancelled: function (el) {
+			$(el).stop()
+		}
+	});
+	
+	Vue.component('message', {
+        template: '#message-template',
+        data: function() {
+            return {
+				btns: [],
+				mess: '',
+				type: 'info',
+				fns: {}
+			}
+        },
+		methods: {
+			action: function (s) {
+				if (typeof s == 'function') {
+					s.call(this);
+				} else if (this[s]){
+					this[s]();
+				}
+			},
+			alert: function (mess, time) {
+				this.mess = mess;
+				this.btns = [];
+				time = time || 2000;
+				if (time > 0) {
+					setTimeout(function () {
+						message.mess = "";
+					}, time)
+				}
+			},
+			close: function () {
+				this.mess = "";
+			},
+			open: function (btns, mess, type, fn) {
+				this.btns = btns;
+				this.mess = mess;
+				this.type = type;
+				this.fns = fn;
+			}
+		},
+		ready: function() {
+			this.$el.classList.remove('hide')
+		}
+    });
+	
+	(function () {
+		var KEY = {
+			UP: 38,
+			DOWN: 40,
+			DEL: 46,
+			TAB: 9,
+			RETURN: 13,
+			ESC: 27,
+			COMMA: 188,
+			PAGEUP: 33,
+			PAGEDOWN: 34,
+			BACKSPACE: 8
+		};
+		var undefined;
+		Vue.component('tag-select', {
+			template: '#tag-select-template',
+			props: {
+				tagList: [],
+				tagSels: []
+			},
+			data: function() {
+				return {
+					isShowSuggest: false,
+					suggestList: [],
+					ipt: '',
+					highlightIndex: -1,
+					hasScroll: undefined
+				}
+			},
+			watch: {
+				ipt: function (val) {
+					var res = [];
+					var tagSels = this.tagSels;
+					MAIN_PAGE.tagList.forEach(function (tmp) {
+						if (tmp.indexOf(val) != -1) {
+							if (tagSels.indexOf(tmp) == -1)
+								res.push(tmp);
+						}	
+					})
+					this.isShowSuggest = true;
+					this.suggestList = res;
+					this.hasScroll = undefined;
+					this.highlightIndex = -1;
+					this.$nextTick(function () {
+						this.getHasScroll();
+					})
+				}
+			},
+			methods: {
+				selectItem: function (index) {
+					this.append(this.suggestList[index]);
+					this.highlightIndex = -1;
+					this.ipt = '';
+					this.isShowSuggest = false;
+				},
+				getHasScroll: function () {
+					if (this.hasScroll === undefined && this.suggestList.length > 0) {
+						var listHeight = this.$el.querySelector('.input-suggest').offsetHeight;
+						var h = 0;
+						_.each(this.$el.querySelectorAll('.input-suggest li'), function (el) {
+							h += el.offsetHeight;
+						});
+						this.hasScroll = listHeight < h;
+					}
+				},
+				filterKeyDown: function (event) {
+					var keyCode = event.keyCode || event.which || event.charCode;
+					var highlightIndex = this.highlightIndex;
+					var length = this.suggestList.length;
+					switch(keyCode) {
+						case KEY.UP:
+							highlightIndex = highlightIndex -2;
+						case KEY.DOWN:
+							highlightIndex++;
+							this.highlightIndex =  (highlightIndex + length) % length;
+							if (this.hasScroll) {
+								var list = this.$el.querySelector('.input-suggest');
+								list.scrollTop = list.querySelectorAll('li')[this.highlightIndex].offsetTop;	
+							}
+							this.isShowSuggest = true;
+							break;
+						case KEY.RETURN:
+							var res = false;
+							if (this.highlightIndex != -1) {
+								res = this.append(this.suggestList[this.highlightIndex]);
+							} else if (this.ipt) {
+								res = this.append(this.ipt);
+							}
+							if (res) {
+								this.ipt = '';
+								this.highlightIndex = -1;
+								this.isShowSuggest = false;
+							}
+							break;
+						case KEY.ESC:
+							this.highlightIndex = -1;
+							this.isShowSuggest = false;
+							break;
+						case KEY.DEL:
+						case KEY.BACKSPACE:
+							if (this.ipt == '' && this.tagSels.length > 0) {
+								this.tagSels.splice(this.tagSels.length - 1, 1);
+							}
+					}
+				},
+				append: function (text) {
+					if (this.tagSels.length > 6) 
+						return false;
+					if (this.tagSels.indexOf(text) == -1) {
+						this.tagSels.push(text);
+						return true;
+					}
+					return false;
+				}
+			},
+			ready: function () {
+				var self = this;
+				$doc.on('click', function (e) {
+					if ($(self.$el).find(e.target).length == 0) {
+						self.isShowSuggest = false;
+					}
+				})
+			}
+		})
+	})();
+	
+	Vue.component('item', {
+        template: '#tree-node-template',
+        props: {
+            model: {},
+            deep: 0
+        },
+        data: function() {
+            return {
+                open: true
+            }
+        },
+        computed: {
+            isFolder: function() {
+				var children = this.model.children;
+				if (!children || children.length == 0) 
+					return false;
+				else {
+					var flag = false;
+					for (var i = 0 ,l = children.length; i < l; i++) {
+						if (children[i].type == 'folder') {
+							return true;
+						}
+					}
+				}
+                return false;
+            }
+        },
+        methods: {
+            toggle: function() {
+                if (this.isFolder) {
+                    this.open = !this.open
+                }
+            },
+            dragenter: function() {
+                if (this.isFolder) {
+                    this.open = true;
+                }
+                //this.$root.$refs.folderTree.dragEnterItemId = this.model.id;
+            }
+        },
+        ready: function() {
+            /*if (this.model._open) {
+                this.$parent.open = true;
+                delete this.model._open;
+            }*/
+            //console.log(this.$parent.model.id);
+            if (this.model.parent != 'root')
+                this.model.parent = this.$parent.model.id;
+            this.$root.treeMap[this.model.id] = this.model;
+        }
+    });
+	
+	Vue.component('tag-tree', {
+		template: '#tag-tree-template',
+		props: ['tagGroup'],
+		data: function () {
+			return {
+				deep: 1,
+				contextMenuId: -1, //右键弹出框id
+				editItemId: -1, //当前编辑的id
+				editName: ''
+			}
+		},
+        methods: {
+        },
+        ready: function() {
+        },
+        watch: {
+        }
+	});
+
+	Vue.component('folder-tree', {
+		template: '#folder-tree-template',
+		props: ['treeData', 'treeMap'],
+		data: function () {
+			return {
+				deep: 1,
+				contextMenuId: -1, //右键弹出框id
+				editItemId: -1, //当前编辑的id
+				editName: ''
+			}
+		},
+        methods: {
+            openContextMenu: function(id) {
+				var self = this;
+                this.contextMenuId = id;
+                this.menu.items[4].visible = this.treeMap[id].parent != 'root'
+                setTimeout(function() {
+                    self.menu.popup(remote.getCurrentWindow());
+                }, 100);
+            },
+            editItem: function(id) {
+                var model = this.treeMap[id];
+                var val = $.trim(this.editName);
+                if (val == '') {
+                    if (model.name == '__新建__') { //新增删除
+                        this.removeItem(id);
+                    }
+                } else {
+                    model.name = val;
+                }
+                MAIN_PAGE.save();
+                this.editItemId = -1;
+            },
+            removeItem: function(id) {
+                var model = this.treeMap[id];
+                this.treeMap[model.parent].children.$remove(model);
+                this._del(model);
+            },
+            _del: function(model) {
+                var tab = model.children;
+				if (!tab) return;
+                delete this.treeMap[model.id];
+                for (var i = 0, len = tab.length; i < len; i++) {
+                    this._del(tab[i]);
+                }
+            }
+        },
+        ready: function() {
+            var self = this;
+            var $elm = $(self.$el);
+			this.$errorBox = $('<div class="tree-error-info"></div>').appendTo('body');
+            $doc.on('click', function(e) {//点击外面，则隐藏
+                if ($elm.find(e.target).length == 0) {
+                    self.contextMenuId = self.editItemId = -1;
+                } else {
+                    //arrayObj.splice(start, deleteCount, [item1[, item2[, . . . [,itemN]]]])
+                    /*
+                    var id = $(e.target).parents('.tree-item:eq(0)').data('id');
+                    console.log(self.contextMenuId ,self.selItemId , self.editItemId, id);
+                    if (id != self.editItemId) {
+                        self.editItemId = -1;
+                    }*/
+                }
+            });
+            var dragElm, dragId;
+            $elm.on('click', '.tree-content', function() {
+                if (self.editItemId != -1) { //编辑中
+                    return;
+                }
+                MAIN_PAGE.selItemId = this.dataset.id;
+				self.contextMenuId = -1;
+            }).on('contextmenu', '.tree-content', function() {
+                self.openContextMenu(this.dataset.id);
+                return false;
+            }).on('blur', 'input', function() {
+                self.editItem(this.parentNode.dataset.id);
+            }).on('dragstart', '.tree-item', function(e) {
+				if ($elm.hasClass('tree-editing')) {
+					return false;
+				}
+                e.stopPropagation();
+				MAIN_PAGE.selItemId = dragId = this.dataset.id;
+            }).on('dragover', '.tree-content', function(e) {
+                if (MAIN_PAGE.isChild(dragId, this.dataset.id, true)) {
+					e.stopPropagation();
+                    return;
+                }
+                if (dragElm && dragElm != this) {
+                    var classList = dragElm.classList;
+                    classList.remove('tree-drag-before');
+                    classList.remove('tree-drag-in');
+                }
+                dragElm = this;
+                var classList = this.classList;
+                classList.remove('tree-drag-before');
+                classList.remove('tree-drag-in');
+                if (e.offsetY <= 3) {
+                    classList.add('tree-drag-before');
+                } else if (e.offsetY >= 25) {
+                    //e.currentTarget.classList.add('tree-drag-after');
+                } else {
+                    classList.add('tree-drag-in');
+                }
+                return false;
+            }).on('drop', '.tree-content', function(e) {
+				if (MAIN_PAGE.isChild(dragId, this.dataset.id, true)) {
+                    return false;
+                }
+                var classList = this.classList;
+                if (classList.contains('tree-drag-in')) {
+                    var model = self.treeMap[dragId];
+                    self.treeMap[model.parent].children.$remove(model);
+
+                    var item = self.treeMap[this.dataset.id];
+                    if (!item.children) {
+                        Vue.set(item, 'children', []);
+                    }
+                    item.children.push(model);
+                    model.parent = this.dataset.id;
+                    MAIN_PAGE.save(); //可能会没有parent;
+                } else if (classList.contains('tree-drag-before')) {
+                    var model = self.treeMap[dragId];
+                    self.treeMap[model.parent].children.$remove(model);
+                    var item = self.treeMap[this.dataset.id];
+                    var index = self.treeMap[item.parent].children.findIndex((n) => n.id == item.id);
+                    self.treeMap[item.parent].children.splice(index, 0, model);
+
+                    model.parent = item.parent;
+                    MAIN_PAGE.save();
+                }
+                classList.remove('tree-drag-before');
+                classList.remove('tree-drag-in');
+                dragId = dragElm = null;
+            });
+			
+			this.menu = Menu.buildFromTemplate([{
+				label: '新增笔记',
+				click: function() {
+					MAIN_PAGE.showBox = 'code';
+					MAIN_PAGE.clearBox();
+				}
+			},{
+				label: '新增收藏',
+				click: function() {
+					MAIN_PAGE.showBox = 'favorite';
+					MAIN_PAGE.clearBox();
+				}
+			},{
+				label: '新增文件夹',
+				click: function() {
+					var id = self.addModelId = self.contextMenuId;
+					if (!self.treeMap[id].children) {
+						Vue.set(self.treeMap[id], 'children', []);
+					}
+					var newId = _.insert(self.treeMap[id].children, {
+						name: '__新建__',
+						type: 'folder'
+					}).id;
+					self.editItemId = newId;
+					self.editName = "";
+				}
+			}, {
+				type: 'separator'
+			}, {
+				label: '删除',
+				click: function() {
+					message.open([{name: '确定', action: function () {
+						self.removeItem(self.contextMenuId);
+						self.contextMenuId = -1;
+						this.close();
+						MAIN_PAGE.save();
+					}}, {name: '取消', action: 'close'}], "确认删除选择的文件夹?", 'warning')
+				}
+			}, {
+				label: '重命名',
+				click: function() {
+					self.editItemId = self.contextMenuId;
+					self.editName = self.treeMap[self.contextMenuId].name;
+				}
+			}]);
+        },
+        watch: {
+            editItemId: function(val) {
+                var self = this;
+                var classList = this.$el.classList;
+                if (val != -1) {
+                    classList.add('tree-editing');
+                    Vue.nextTick(function() {
+                        var ipt = $(self.$el).find('[data-id="' + val + '"] input')[0];
+                        ipt.select();
+                    })
+                } else {
+                    classList.remove('tree-editing');
+                    this.$errorBox.hide();
+                }
+            },
+            
+            editName: function(val) {
+                if ($.trim(val) == '') {
+                    var $ipt = $(this.$el).find('[data-id="' + this.editItemId + '"] input:eq(0)');
+                    var offset = $ipt.offset();
+                    offset.top += 25;
+                    this.$errorBox.html('必须填写文件夹名称')
+                        .css({
+                            top: offset.top,
+                            left: offset.left,
+                            width: $ipt.width()
+                        }).show();
+                } else {
+                    this.$errorBox.hide();
+                }
+            }
+        }
+	});
+	
+	(function () {
+		var modelist = ace.require("ace/ext/modelist");
+		var editor;
+		
+		Vue.component('code-box', {
+			template: '#codeBox-template',
+			props: [],
+			data: function () {
+				return {
+					codeMode: 'javascript',
+					modeList: ['javascript', 'html', 'css', 'json', 'text'],
+					codeTiTle: '',
+					tagSels: [],
+					fileId: ''
+				}
+			},
+			methods: {
+				save: function() {
+					if (this.codeTiTle == '') {
+						message.alert('请填写标题');
+						return;
+					}
+					var text = editor.getValue();
+					var selItemId = MAIN_PAGE.selItemId;
+					if (!selItemId || selItemId == -1) {
+						message.alert('请选择保存文件夹');
+						return;
+					}
+					var treeMap = MAIN_PAGE.treeMap;
+					var fileMap = MAIN_PAGE.fileMap;
+					
+					if (!treeMap[selItemId].children) {
+						Vue.set(treeMap[selItemId], 'children', []);
+					}
+					var children = treeMap[selItemId].children;
+					
+					var res = modelist.modesByName[this.codeMode.toLowerCase()];
+					var ext = res.extensions.split('|')[0];
+					var fileId = MAIN_PAGE.selFileId;
+					console.log('MAIN_PAGE.selFileId', MAIN_PAGE.selFileId);
+					if (!fileId || fileId == -1) {
+						var file = _.insert(children, {
+							type: 'file',
+							parent: selItemId
+						});
+						fileId = file.link = file.id;
+					}
+					
+					var dirPath = '/code/' + fileId + '/';
+					if (!fileMap[fileId]) {
+						Vue.set(fileMap, fileId, {});
+					}
+					$.extend(fileMap[fileId], {
+						tags: this.tagSels,
+						name: this.codeTiTle,
+						desc: text.substr(0, 200),
+						ext: ext,
+						mode: this.codeMode,
+						t: 'code'
+					})
+					
+					mkdirsSync(dirPath);
+					fs.writeFile(bookSpacePath + dirPath + this.codeTiTle + '.' + ext, text, function (err) {
+						if (err) throw err;
+						MAIN_PAGE.save();
+						message.alert('保存成功');
+					});
+					MAIN_PAGE.selFileId = fileId;
+					var tagList = MAIN_PAGE.tagList;
+					var items = MAIN_PAGE.defTagGroup.items;
+					this.tagSels.forEach(function (tag) {
+						if (tagList.indexOf(tag) == -1) {
+							tagList.push(tag);
+							items.push(tag);
+						}
+					})
+				},
+				del: function () {
+					var fileId = this.fileId;
+					MAIN_PAGE.fileMap[fileId] = null;
+					//可能需要树进行查找
+					var children = MAIN_PAGE.treeMap[MAIN_PAGE.selItemId].children;
+					var index = children.findIndex(function (item) {
+						return item.id == fileId
+					});
+					if (index !== -1) {
+						children.splice(index, 1)
+					}
+					MAIN_PAGE.selFileId = -1;
+					this.fileId = -1;
+					MAIN_PAGE.save();
+				},
+				setMode: function() {
+					var res = modelist.modesByName[this.codeMode.toLowerCase()];
+					if (res) {
+						editor.session.setMode(res.mode);
+					}
+				},
+				load: function (fileId) {
+					var file = MAIN_PAGE.fileMap[fileId];
+					this.fileId = fileId;
+					this.codeMode = file.mode;
+					this.codeTiTle = file.name;
+					this.tagSels = file.tags;
+					var dirPath = '/code/' + fileId + '/';
+					fs.readFile(bookSpacePath + dirPath + file.name + '.' + file.ext, 'utf8', function (err, data) {
+						if (err) throw err;
+						editor.setValue(data);
+						editor.clearSelection();
+					});
+				},
+				clear: function () {
+					MAIN_PAGE.selFileId = -1;
+					this.fileId = -1;
+					this.codeMode = 'javascript';
+					this.codeTiTle = "";
+					this.tagSels = [];
+					editor.setValue("");
+				}
+			},
+			ready: function() {
+				var self = this;
+				editor = ace.edit("aceEditor");
+				editor.setOptions({
+					enableBasicAutocompletion: true,
+					enableSnippets: true,
+					enableLiveAutocompletion: false
+				});
+				this.setMode();
+			},
+			watch: {
+				codeMode: function(val) {
+					this.setMode();
+				}
+			}
+		});
+	})();
+	
+	
+	(function () {
+		var wkLoad;
+		var webview;
+		Vue.component('favorite-box', {
+			template: '#favoriteBox-template',
+			props: [],
+			data: function () {
+				return {
+					title: '',
+					url: '',
+					tagSels: [],
+					fileId: '',
+					pageTitle: ''
+				}
+			},
+			methods: {
+				save: function() {
+					if (this.title == '') {
+						message.alert('请填写标题');
+						return;
+					}
+					var selItemId = MAIN_PAGE.selItemId;
+					if (!selItemId || selItemId == -1) {
+						message.alert('请选择保存文件夹');
+						return;
+					}
+					
+					var treeMap = MAIN_PAGE.treeMap;
+					var fileMap = MAIN_PAGE.fileMap;
+					if (!treeMap[selItemId].children) {
+						Vue.set(treeMap[selItemId], 'children', []);
+					}
+					var children = treeMap[selItemId].children;
+					var fileId = MAIN_PAGE.selFileId;
+					if (!fileId || fileId == -1) {
+						var file = _.insert(children, {
+							type: 'file',
+							parent: selItemId
+						});
+						fileId = file.link = file.id;
+					}
+
+					if (!fileMap[fileId]) {
+						Vue.set(fileMap, fileId, {});
+					}
+					$.extend(fileMap[fileId], {
+						tags: this.tagSels,
+						name: this.title,
+						url: this.url,
+						desc: this.pageTitle,
+						t: 'favorite'
+					})
+					
+					MAIN_PAGE.selFileId = fileId;
+					var tagList = MAIN_PAGE.tagList;
+					var items = MAIN_PAGE.defTagGroup.items;
+					this.tagSels.forEach(function (tag) {
+						if (tagList.indexOf(tag) == -1) {
+							tagList.push(tag);
+							items.push(tag);
+						}
+					})
+					MAIN_PAGE.save();
+					message.alert('保存成功');
+				},
+				go2url: function () {
+					var reg = /https?\:\/{1,}/;
+					if (!reg.test(this.url)) {
+						this.url = 'http://' + this.url;
+					}
+					var url = this.url;
+					wkLoad.then(function () {
+						webview.loadURL(url);
+					})
+				},
+				back2url: function () {
+					webview.goBack();
+				},
+				load: function (fileId) {
+					var file = MAIN_PAGE.fileMap[fileId];
+					this.fileId = fileId;
+					this.title = file.name;
+					this.tagSels = file.tags;
+					var flag =  this.url == file.url
+					this.url = file.url;
+					if (!flag)
+						this.go2url();
+				},
+				del: function () {
+					var fileId = this.fileId;
+					MAIN_PAGE.fileMap[fileId] = null;
+					//可能需要树进行查找
+					var children = MAIN_PAGE.treeMap[MAIN_PAGE.selItemId].children;
+					var index = children.findIndex(function (item) {
+						return item.id == fileId
+					});
+					if (index !== -1) {
+						children.splice(index, 1)
+					}
+					MAIN_PAGE.selFileId = -1;
+					this.fileId = -1;
+					MAIN_PAGE.save();
+				},
+				clear: function () {
+					MAIN_PAGE.selFileId = -1;//
+					this.fileId = -1;
+					this.title = '';
+					this.tagSels = [];
+					this.pageTitle = "";
+					this.url = '';
+					wkLoad && wkLoad.then(function () {
+						webview.loadURL('data:text/plain,');
+					})
+				}
+			},
+			ready: function() {
+				console.log('ready')
+				webview = this.$el.querySelector('webview');
+				var self = this;
+				webview.addEventListener('close', () => {
+					webview.src = 'data:text/plain,';
+				});
+				
+				webview.addEventListener('did-navigate-in-page', (url) => {
+					console.log('did-navigate-in-page', url);
+				});
+				webview.addEventListener('will-navigate', (url) => {
+					console.log('will-navigate', url);
+				});
+				wkLoad = new Promise(function (resolve) {
+					webview.addEventListener('dom-ready', () => {
+						resolve();
+					});
+				});
+				webview.addEventListener('did-navigate', (opt) => {
+					if (opt.url != 'data:text/plain,')
+						self.url = opt.url;
+					else 
+						self.url = '';
+				});
+				webview.addEventListener('new-window', (opt) => {
+					webview.loadURL(opt.url);
+				});
+				webview.addEventListener('page-title-updated', (opt) => {
+					self.pageTitle = opt.title;
+				});
+				
+			},
+			watch: {
+				
+			}
+		});
+	})();
+	
+	var message;
+	var fileList;
+	var codeBox;
+	var favoriteBox;
+	//var folderTree;
+	
+	var defTagGroup;
+	filesData.tagG.forEach(function (item) {
+		if (item.key == 'def')
+			defTagGroup = item;
+	});
+	MAIN_PAGE = new Vue ({
+		el: 'body',
+		data: {
+			pageloading: true,
+			treeMap: {},
+			treeData: filesData.books[0],
+			fileMap: filesData.file,
+			tagList: filesData.tags,
+			tagGroup: filesData.tagG,
+			defTagGroup: defTagGroup,
+			selItemId: -1, //当前选中的文件夹id
+			selFileId: -1, //当前选中的文件id
+			showBox: 'code',
+			expandBox: false,
+			leftShowBox: 'folder'
+		},
+		methods: {
+			initIde: function () {
+				setTimeout(function () {
+					MAIN_PAGE.pageloading = false;
+				}, 0)
+			},
+			save: function() {
+                _.save(filesData, dbFilePath);
+            },
+			isChild: function (parent, child, checkSelf) {
+				if (checkSelf && parent == child) return true;
+				var flag = false;
+				var treeMap = this.treeMap;
+				var children = treeMap[parent].children;
+				if (children && children.length > 0) {
+					for (var i = 0, len = children.length; i < len; i++) {
+						if (children[i].id == child)
+							return true;
+						var res  = this.isChild(children[i].id, child);
+						if (res) return true;
+					}
+				}
+				return false;
+			},
+			getDirPath: function (parent) {
+				var res = [];
+				var treeMap = this.treeMap;
+				while (treeMap[parent]) {
+					res.push(treeMap[parent].name);
+					parent = treeMap[parent].parent;
+				}
+				return res.reverse().join('/') + '/'
+			},
+			clearBox: function () {
+				if (this.showBox == 'code') {
+					codeBox.clear();
+				} else {
+					favoriteBox.clear();
+				}
+			}
+		},
+		ready: function () {
+			this.initIde();
+			message = this.$refs.message;
+			fileList = this.$refs.fileList;
+			codeBox = this.$refs.codeBox;
+			favoriteBox = this.$refs.favoriteBox;
+			//folderTree = this.$refs.folderTree;
+		},
+		watch: {
+			selItemId: function(val) {
+				MAIN_PAGE.selFileId = -1;
+                //fileList.loadFileList(val);
+            },
+			selFileId: function (fileId) {
+				if (fileId != -1) {
+					var file = this.fileMap[fileId];
+					this.showBox = file.t;
+					if (file.t == 'code') {
+						codeBox.load(fileId);
+					} else {
+						favoriteBox.load(fileId);
+					}
+				} else {
+					favoriteBox.clear();
+					codeBox.clear();
+				}
+			}
+		}
+	});
+
+</script>  
+
+</html>

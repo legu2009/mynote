@@ -1,0 +1,123 @@
+{
+  "books": [
+    {
+      "name": "我的笔记",
+      "type": "folder",
+      "parent": "root",
+      "id": "15f2f9e8-f7ae-432d-8b35-485b8e90a685",
+      "children": [
+        {
+          "name": "前端",
+          "type": "folder",
+          "id": "03c00505-44ca-4ed6-9e00-4bd50dace409",
+          "parent": "15f2f9e8-f7ae-432d-8b35-485b8e90a685",
+          "children": [
+            {
+              "name": "h5",
+              "type": "folder",
+              "id": "db41a134-289e-446e-ba15-928c0c4d9545",
+              "parent": "03c00505-44ca-4ed6-9e00-4bd50dace409",
+              "children": [
+                {
+                  "type": "file",
+                  "parent": "db41a134-289e-446e-ba15-928c0c4d9545",
+                  "id": "ce9f32a8-a771-4e47-95e7-4334b4d2b802",
+                  "link": "ce9f32a8-a771-4e47-95e7-4334b4d2b802"
+                },
+                {
+                  "type": "file",
+                  "parent": "db41a134-289e-446e-ba15-928c0c4d9545",
+                  "id": "2d885cfb-384b-47bb-9351-0762e67a9239",
+                  "link": "2d885cfb-384b-47bb-9351-0762e67a9239"
+                }
+              ]
+            },
+            {
+              "name": "js",
+              "type": "folder",
+              "id": "f849cf3a-53d3-4be0-a98d-2a5950adf0bd",
+              "parent": "03c00505-44ca-4ed6-9e00-4bd50dace409"
+            },
+            {
+              "name": "博客",
+              "type": "folder",
+              "id": "83aec3cf-ce79-443f-850e-36bf33cc3257",
+              "parent": "03c00505-44ca-4ed6-9e00-4bd50dace409",
+              "children": [
+                {
+                  "type": "file",
+                  "parent": "83aec3cf-ce79-443f-850e-36bf33cc3257",
+                  "id": "5ef585e7-68dc-4a54-a0c9-7ef006e4bb3a",
+                  "link": "5ef585e7-68dc-4a54-a0c9-7ef006e4bb3a"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "file": {
+    "ee6bbcdd-a1b3-4c32-a9da-4ff46749291c": null,
+    "5ef585e7-68dc-4a54-a0c9-7ef006e4bb3a": {
+      "tags": [
+        "BOKE",
+        "AD",
+        "ASD"
+      ],
+      "name": "BOKEYUAN",
+      "url": "http://www.cnblogs.com/wenBlog/p/5692658.html",
+      "desc": "PowerBI 引入时间智能 - DB乐之者 - 博客园",
+      "t": "favorite"
+    },
+    "ce9f32a8-a771-4e47-95e7-4334b4d2b802": {
+      "tags": [
+        "QWE"
+      ],
+      "name": "WEQWEQWEQ",
+      "desc": "QWEQWEQW\n",
+      "ext": "js",
+      "mode": "javascript",
+      "t": "code"
+    },
+    "2d885cfb-384b-47bb-9351-0762e67a9239": {
+      "tags": [
+        "asda",
+        "asdaa"
+      ],
+      "name": "asda",
+      "desc": "asdasdas\nasda\nsd\nasd\na\nsd\nas\nda\nsd\na\nsd\nasd\na\nsd\nasd\na\nsd\nas\nda\nd",
+      "ext": "js",
+      "mode": "javascript",
+      "t": "code"
+    }
+  },
+  "tagG": [{
+		"key": "def",
+		"items": ["html",
+    "h5",
+    "BOKE",
+    "AD",
+    "ASD",
+    "SDASDAS",
+    "QWE",
+    "EQWEQ",
+    "11",
+    "asda",
+    "asdaa"],
+		"color": "red"
+	}],
+  "tags": [
+    "html",
+    "h5",
+    "BOKE",
+    "AD",
+    "ASD",
+    "SDASDAS",
+    "QWE",
+    "EQWEQ",
+    "11",
+    "asda",
+    "asdaa"
+  ]
+}

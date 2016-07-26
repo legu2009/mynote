@@ -1,0 +1,14 @@
+{
+  "name": "gulp-vue",
+  "version": "0.0.1",
+  "dependencies": {
+	"gulp-util": "^3.0.3",
+    "through2": "^0.6.1",
+	"parse5": "^2.1.0",
+	"jade": "^1.11.0",
+	"stylus": "^0.54.5",
+	"de-indent": "",
+	"vue-template-validator": ""
+  },
+  "main": "./index.js"
+}
