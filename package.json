@@ -11,6 +11,12 @@
 	"gulp": "",
 	"gulp-stylus": "",
 	"gulp-jade": "",
-	"vue": ""
+	"vue": "",
+    "gulp-babel": "",
+	"babel-preset-es2015": "",
+	"gulp-sourcemaps": "",
+	"gulp-util": "",
+	"gulp-babel": "",
+	"babel-core": ""
   }
 }

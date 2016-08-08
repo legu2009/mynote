@@ -1,32 +1,10 @@
 var through = require('through2');
 var gutil = require('gulp-util');
 
-/*
-var regTpl = /<template>([\s\S]+?)<\/template>/;
-var regStyle = /<style>([\s\S]+?)<\/style>/; 
-var regJs = /<script>([\s\S]+?)<\/script>/; 
-var reg = [/'/g, /\n/g, /([^\\]+)\.vue$/];
-
-var vueWrite = function (file, str) {
-	var match = file.path.match(reg[2]);
-	var id = "vue-tpl-" + match[1];
-	var appendJs = "";
-	var res = "";
-	str = str.replace(regTpl, function (t, h) {
-		appendJs += "\tVue.appendHTML(\n'<template id=\"" + id + "\">" +  h.replace(reg[0], "\\'").replace(reg[1], "\\\n") + "<\/template>');\n";
-		return "";
-	}).replace(regStyle, function (t, h) {
-		appendJs += "\tVue.appendCSS(\n'" + h.replace(reg[0], "\\'").trim().replace(reg[1], "\\\n") + "');\n"
-		return "";
-	}).replace(regJs, function (t, h) {
-		res = "define(function (require) {\
-require('VueCommon');\
-var Vue = require('Vue');\
-var exports;\n" + appendJs + h + ";\n\texports.template = '#" + id + "';\n\texports = Vue.extend(exports);\n\tVue.component('" + match[1] + "', exports);\n\treturn exports;\n});"
-		return ;
-	})
-	return res;
-};*/
+var parse5 = require('parse5');
+var deindent = require('de-indent');
+var validateTemplate = require('vue-template-validator');
+var jade = require('jade');
 
 module.exports = function(opt){
 	function run (file, encoding, callback) {
@@ -44,8 +22,14 @@ module.exports = function(opt){
 	return through.obj(run);
 }
 
-var parse5 = require('parse5')
-var deindent = require('de-indent')
+var getHTML = {//暂时只做了jade模版的支持，需要别的模版对该对象进行扩展
+	'jade' : function (content) {
+		return jade.compile(content, {})({})
+	},
+	'default': function (content) {
+		return content;
+	}
+};
 var splitRE = /\r?\n/g
 var emptyRE = /^\s*$/
 var commentSymbols = {
@@ -62,6 +46,7 @@ var commentSymbols = {
 var vueWrite = function (file, content) {
 	var output = {
 		template: [],
+		style: [],
 		script: []
 	}
 	var fragment = parse5.parseFragment(content, {
@@ -69,49 +54,22 @@ var vueWrite = function (file, content) {
 	});
 	fragment.childNodes.forEach(function (node) {
 		var type = node.tagName
-		var lang = getAttribute(node, 'lang')
-		var src = getAttribute(node, 'src')
-
+		var lang = (getAttribute(node, 'lang') || 'default').toLowerCase();
+		
 		var warnings = null
-		var map = null
-
 		if (!output[type]) {
 			return
 		}
-
 		// node count check
 		if ((type === 'script' || type === 'template') && output[type].length > 0) {
 			throw new Error(
-				'[vue-loader] Only one <script> or <template> tag is allowed inside a Vue component.'
+				'[glup-vue] Only one <script> or <template> tag is allowed inside a Vue component.'
 			)
 		}
-		// handle src imports
-		if (src) {
-			if (type === 'style') {
-				output.styleImports.push({
-					src: src,
-					lang: lang,
-					scoped: scoped
-				})
-			} else if (type === 'template') {
-				output.template.push({
-					src: src,
-					lang: lang
-				})
-			} else if (type === 'script') {
-				output.script.push({
-					src: src,
-					lang: lang
-				})
-			}
-			return
-		}
-
 		// skip empty script/style tags
 		if (type !== 'template' && (!node.childNodes || !node.childNodes.length)) {
 			return
 		}
-
 		// template content is nested inside the content fragment
 		if (type === 'template') {
 			node = node.content
@@ -119,37 +77,50 @@ var vueWrite = function (file, content) {
 				warnings = validateTemplate(node, content)
 			}
 		}
-
 		// extract part
 		var start = node.childNodes[0].__location.startOffset
 		var end = node.childNodes[node.childNodes.length - 1].__location.endOffset
 		var result
 		if (type === 'script') {
-			// preserve other parts as commenets so that linters
-			// and babel can output correct line numbers in warnings
-			result =
-			commentScript(content.slice(0, start), lang) +
-			deindent(content.slice(start, end)) +
-			commentScript(content.slice(end), lang)
+			//将非script的内容进行当行注释，保持原文件行数，方便js错误查看
+			result = commentScript(content.slice(0, start), lang) +
+				deindent(content.slice(start, end)) +
+				commentScript(content.slice(end), lang)
 		} else {
-			var lineOffset = content.slice(0, start).split(splitRE).length - 1
 			result = deindent(content.slice(start, end))
-
-			// pad whith whitespace so that error messages are correct
-			result = Array(lineOffset + 1).join('\n') + result
 		}
-
-		output[type].push({
+		output[type] = {
 			lang: lang,
-			scoped: scoped,
 			content: result,
-			map: map && map.toJSON(),
 			warnings: warnings
-		})
+		}
 	})
+	var lang = output.template.lang;
+	if (!getHTML[lang]) {
+		throw new Error(
+			'[glup-vue] ' + lang + ' html engine not support'
+		)
+	}
+	/*
+		return output.script.content 
+			+ "\n;exports.default.template = '" + getHTML[lang](output.template.content, {}).replace(/(\\*)'/g, function (a, b) {
+			return (b||"").replace('\\', '\\\\') + "\\'"
+		}).replace(/\n/g, '\\\n') + "'";
+		*/
+	//try { 
+		/*return output.script.content 
+			+ "\n;exports.default.template = '" + getHTML[lang](output.template.content, {}).replace(/(\\*)'/g, function (a, b) {
+			return (b||"").replace('\\', '\\\\') + "\\'"
+		}).replace(/\n/g, '\\\n') + "'";*/
+		//对生成的html,'号进行替换，没有做多测试案例，可能有点小bug
+		return output.script.content 
+			+ "\n;exports.default.template = '" + getHTML[lang](output.template.content, {}).replace(/(\\*)'/g, function (a, b) {
+			return (b||"").replace('\\', '\\\\') + "\\'"
+		}).replace(/\n/g, '\\\n') + "';";
+	//} catch (e) { 
+		//console.log('message', e.message); 
+	//} 
 
-	cache.set(cacheKey, output)
-	return output
 }
 
 function commentScript (content, lang) {
